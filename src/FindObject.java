@@ -118,84 +118,70 @@ class FindObject {
 		}
 
 
-		//平行移動
+		//ホモグラフィ変換後の画像の4隅を計算
 		Mat P = new Mat(new Size(4,3), CvType.CV_64F);
 		P.put(0, 0, new double[] {0,img_object.width(), img_object.width(), 0 ,0, 0, img_object.height(), img_object.height(), 1, 1, 1, 1});
-		System.out.println(P.dump());
 		Mat PP = new Mat(new Size(4,3), CvType.CV_64F);
-		//積
-		Core.gemm(HP, P, 1, new Mat(), 0, PP);
-		//System.out.println(PP.dump());
-		double x_min;		
-		double y_min;
-		double x_max;
-		double y_max;
+		//画像の4隅をホモグラフィ変換する
+		Core.gemm(H, P, 1, new Mat(), 0, PP);
+		
+		double x_min,y_min, x_max,y_max;
 		Mat dst = new Mat();
+		//変換後のx,yの最小値計算
 		Core.reduce(PP, dst, 1, Core.REDUCE_MIN);
 		x_min = dst.get(0, 0)[0];
 		y_min = dst.get(1, 0)[0];
+		//変換後のx,yの最大値計算
 		Core.reduce(PP, dst, 1, Core.REDUCE_MAX);
 		x_max = dst.get(0, 0)[0];
 		y_max = dst.get(1, 0)[0];
 
-		//System.out.println(x_max +  " "+ x_min);
-		//System.out.println(y_max +  " "+ y_min);
-
-
-		double afinx=0;
-		double afiny=0;
+		double affinex=0, affiney=0;
+		//ホモグラフィ変換後の座標が負の領域にある場合、平行移動する
 		if(x_min < 0 ){
 			HP.put(0, 2, new double[] {HP.get(0, 2)[0]-x_min});
-			System.out.println("a");
-			afinx = -x_min;
+			affinex = -x_min;
 		}
 
 		if(y_min < 0 ){
 			HP.put(1, 2, new double[] {HP.get(1, 2)[0]-y_min});
-			System.out.println("b");
-			afiny = -y_min;
+			affiney = -y_min;
 		}
 
+		//平行移動前の座標
 		List<Point> src_pt = new ArrayList<Point>();
 		src_pt.add(new Point(0,0));
 		src_pt.add(new Point(10,0));
 		src_pt.add(new Point(0,10));
 		MatOfPoint2f srcpt = new MatOfPoint2f();
 		srcpt.fromList(src_pt);
-
-
+		//平行移動後の座標
 		List<Point> dst_pt = new ArrayList<Point>();
-		dst_pt.add(new Point(afinx, afiny));
-		dst_pt.add(new Point(10+afinx,afiny));
-		dst_pt.add(new Point(afinx,10+afiny));
+		dst_pt.add(new Point(affinex, affiney));
+		dst_pt.add(new Point(10+affinex,affiney));
+		dst_pt.add(new Point(affinex,10+affiney));
 		MatOfPoint2f dstpt = new MatOfPoint2f();
 		dstpt.fromList(dst_pt);
 
-
+		//アフィン行列生成
 		Mat A = Imgproc.getAffineTransform(srcpt, dstpt);
-		System.out.println(A.dump());
-		//		System.out.println(H.dump());
-		//		System.out.println(x_max);
-		//		System.out.println(y_max);
-		//ここまで
 
+		//		Mat obj_corners = new Mat(4,1,CvType.CV_32FC2);
+		//		Mat scene_corners = new Mat(4,1,CvType.CV_32FC2);
 
+		//		obj_corners.put(0, 0, new double[] {0,0});
+		//		obj_corners.put(1, 0, new double[] {img_object.cols(),0});
+		//		obj_corners.put(2, 0, new double[] {img_scene.cols(),img_scene.rows()});
+		//		obj_corners.put(3, 0, new double[] {0,img_scene.rows()});
+		//
+		//		Core.perspectiveTransform(obj_corners,scene_corners, H);
 
-
-		Mat obj_corners = new Mat(4,1,CvType.CV_32FC2);
-		Mat scene_corners = new Mat(4,1,CvType.CV_32FC2);
-		obj_corners.put(0, 0, new double[] {0,0});
-		obj_corners.put(1, 0, new double[] {img_object.cols(),0});
-		obj_corners.put(2, 0, new double[] {img_scene.cols(),img_scene.rows()});
-		obj_corners.put(3, 0, new double[] {0,img_scene.rows()});
-
-		Core.perspectiveTransform(obj_corners,scene_corners, H);
-
-		Core.line(img_object, new Point(scene_corners.get(0,0)), new Point(scene_corners.get(1,0)), new Scalar(0, 255, 0),4);
-		Core.line(img_object, new Point(scene_corners.get(1,0)), new Point(scene_corners.get(2,0)), new Scalar(0, 255, 0),4);
-		Core.line(img_object, new Point(scene_corners.get(2,0)), new Point(scene_corners.get(3,0)), new Scalar(0, 255, 0),4);
-		Core.line(img_object, new Point(scene_corners.get(3,0)), new Point(scene_corners.get(0,0)), new Scalar(0, 255, 0),4);
+		//		Core.line(img_object, new Point(scene_corners.get(0,0)), new Point(scene_corners.get(1,0)), new Scalar(0, 255, 0),4);
+		//		Core.line(img_object, new Point(scene_corners.get(1,0)), new Point(scene_corners.get(2,0)), new Scalar(0, 255, 0),4);
+		//		Core.line(img_object, new Point(scene_corners.get(2,0)), new Point(scene_corners.get(3,0)), new Scalar(0, 255, 0),4);
+		//		Core.line(img_object, new Point(scene_corners.get(3,0)), new Point(scene_corners.get(0,0)), new Scalar(0, 255, 0),4);
 		//Sauvegarde du résultat
+
 		System.out.println(String.format("Writing %s", pathResult));
 		Highgui.imwrite(pathResult, img_matches);
 
@@ -208,7 +194,7 @@ class FindObject {
 		Mat img_mat = new Mat();
 
 		//入力画像、出力画像、変換行列、サイズ
-		Imgproc.warpPerspective(img1, result, HP, new Size(x_max*2,y_max*2/*img2.cols()*1.5, img2.rows()*1.5*/));
+		Imgproc.warpPerspective(img1, result, HP, new Size(x_max*2,y_max*2));
 		Imgproc.warpAffine(img2, img_mat, A, new Size(x_max*2,y_max*2));
 
 		Mat diff = new Mat();
@@ -216,28 +202,6 @@ class FindObject {
 		Imgproc.threshold(diff, diff, 100.0, 255.0,Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
 		Imgproc.erode(diff, diff, new Mat(), new Point(-1,-1), 1);
 		Imgproc.dilate(diff, diff, new Mat());
-
-
-
-		//		for(int y = 0; y < img_mat.rows(); y++){
-		//			for(int x = 0 ; x <img_mat.cols() ; x++){
-		//				result.put(y, x, img_mat.get(y, x));
-		//			}
-		//		}
-
-
-		//		Mat fi = new Mat(new Size(img1.cols()+img2.cols(),img2.rows()*2),CvType.CV_8UC3);
-		//		Mat roi1 = new Mat(fi, new Rect(0,0, img1.cols(), img1.rows()));
-		//		Mat roi2 = new Mat(fi, new Rect(0,0, result.cols(), result.rows()));
-		//		
-		//		result.copyTo(roi2);
-		//		img1.copyTo(roi1);
-
-		//		int i = img1.cols();
-		//		Mat m = new Mat(result, new Rect(i, 0, img2.cols(), img2.rows()));
-		//		img2.copyTo(m);
-
-
 
 
 		//Features2d.drawMatches(img1, keypoints_object, img2, keypoints_scene, gm, img_mat, new Scalar(254,0,0),new Scalar(254,0,0) , new MatOfByte(), 2);

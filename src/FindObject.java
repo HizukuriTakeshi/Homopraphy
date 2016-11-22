@@ -49,11 +49,51 @@ class FindObject {
 		DescriptorMatcher matcher = DescriptorMatcher.create(1); // 1 = FLANNBASED
 		MatOfDMatch matches = new MatOfDMatch();
 		matcher.match(descriptor_object, descriptor_scene, matches);
-		List<DMatch> matchesList = matches.toList();
+		
+		//ここから
+		List<MatOfDMatch> knnmatch_points = new ArrayList<MatOfDMatch>();
+		matcher.knnMatch(descriptor_object, descriptor_scene, knnmatch_points, 2);
+		
+		final double match_par = 0.6;
+		LinkedList<DMatch> good_matches2 = new LinkedList<DMatch>();
+		MatOfDMatch gm2 = new MatOfDMatch();
+		LinkedList<Point> match_point1 = new LinkedList<Point>();
+		LinkedList<Point> match_point2 = new LinkedList<Point>();
+		
+		for(int i = 0; i< knnmatch_points.size(); ++i){
+			MatOfDMatch matofDMatch = knnmatch_points.get(i);
+			DMatch[] dmatcharray = matofDMatch.toArray();
+			DMatch m1 = dmatcharray[0];
+			DMatch m2 = dmatcharray[1];
+			
+			
+			if(m1.distance< m2.distance*match_par){
+				good_matches2.addLast(m1);
+				match_point1.add(keypoints_object.toList().get(m1.queryIdx).pt);
+				match_point2.add(keypoints_scene.toList().get(m2.trainIdx).pt);
+			}
+		}
+		gm2.fromList(good_matches2);
+		MatOfPoint2f m_p1 = new MatOfPoint2f();
+		m_p1.fromList(match_point1);
+		MatOfPoint2f m_p2 = new MatOfPoint2f();
+		m_p2.fromList(match_point2);
+		
+		Mat masks = new Mat();
+		Mat test = Calib3d.findHomography(m_p1, m_p2, 1, Calib3d.RANSAC, masks);
 
+		System.out.println(masks.get(0, 0)[0]);
+		Mat img_matches2 = new Mat();
+		Features2d.drawMatches(img_object, keypoints_object, img_scene, keypoints_scene, gm2, img_matches2, new Scalar(255,0,0), new Scalar(0,0,255), new MatOfByte(), 2);
+		
+		Highgui.imwrite("./resources/test.jpg", img_matches2);
+		//ここまで
+		
+		
+		
+		List<DMatch> matchesList = matches.toList();
 		Double max_dist = 0.0;
 		Double min_dist = 100.0;
-
 		//最小距離
 		//-- Quick calculation of max and min distances between keypoints
 		for(int i = 0; i < descriptor_object.rows(); i++){
@@ -61,13 +101,10 @@ class FindObject {
 			if(dist < min_dist) min_dist = dist;
 			if(dist > max_dist) max_dist = dist;
 		}
-
 		System.out.println("-- Max dist : " + max_dist);
 		System.out.println("-- Min dist : " + min_dist);    
-
 		LinkedList<DMatch> good_matches = new LinkedList<DMatch>();
 		MatOfDMatch gm = new MatOfDMatch();
-
 		//-- Draw only "good" matches (i.e. whose distance is less than 3*min_dist )
 		for(int i = 0; i < descriptor_object.rows(); i++){
 			if(matchesList.get(i).distance < 2.5*min_dist){
@@ -106,7 +143,6 @@ class FindObject {
 
 		MatOfPoint2f obj = new MatOfPoint2f();
 		obj.fromList(objList);
-
 		MatOfPoint2f scene = new MatOfPoint2f();
 		scene.fromList(sceneList);
 

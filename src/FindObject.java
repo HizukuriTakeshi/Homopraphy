@@ -98,7 +98,7 @@ class FindObject {
 		List<KeyPoint> keypoints_sceneList = keypoints_scene.toList();
 
 
-		for(int i = 0; i<10/*good_matches.size()*/; i++){
+		for(int i = 0; i<15/*good_matches.size()*/; i++){
 			//-- Get the keypoints from the good matches
 			objList.addLast(keypoints_objectList.get(good_matches.get(i).queryIdx).pt);
 			sceneList.addLast(keypoints_sceneList.get(good_matches.get(i).trainIdx).pt);
@@ -113,15 +113,15 @@ class FindObject {
 		Mat H = Calib3d.findHomography(obj, scene, Calib3d.RANSAC, min_dist);
 		Mat HP = H.clone();
 
-		//		if(!H.empty()){
-		//			System.out.println(H.dump());
-		//		}
+		if(!H.empty()){
+			System.out.println(H.dump());
+		}
 
 
 		//平行移動
 		Mat P = new Mat(new Size(4,3), CvType.CV_64F);
 		P.put(0, 0, new double[] {0,img_object.width(), img_object.width(), 0 ,0, 0, img_object.height(), img_object.height(), 1, 1, 1, 1});
-		//System.out.println(P.dump());
+		System.out.println(P.dump());
 		Mat PP = new Mat(new Size(4,3), CvType.CV_64F);
 		//積
 		Core.gemm(HP, P, 1, new Mat(), 0, PP);
@@ -208,7 +208,7 @@ class FindObject {
 		Mat img_mat = new Mat();
 
 		//入力画像、出力画像、変換行列、サイズ
-		Imgproc.warpPerspective(img1, result, H, new Size(x_max*2,y_max*2/*img2.cols()*1.5, img2.rows()*1.5*/));
+		Imgproc.warpPerspective(img1, result, HP, new Size(x_max*2,y_max*2/*img2.cols()*1.5, img2.rows()*1.5*/));
 		Imgproc.warpAffine(img2, img_mat, A, new Size(x_max*2,y_max*2));
 
 		Mat diff = new Mat();
@@ -216,7 +216,7 @@ class FindObject {
 		Imgproc.threshold(diff, diff, 100.0, 255.0,Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
 		Imgproc.erode(diff, diff, new Mat(), new Point(-1,-1), 1);
 		Imgproc.dilate(diff, diff, new Mat());
-		
+
 
 
 		//		for(int y = 0; y < img_mat.rows(); y++){
